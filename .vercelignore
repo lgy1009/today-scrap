@@ -1,0 +1,7 @@
+# Vercel에 올리지 않을 폴더 (작업용 폴더·로컬 캐시)
+trash-can/
+.bkit/
+.claude/
+.next/
+node_modules/
+.env*
