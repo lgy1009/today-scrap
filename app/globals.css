@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+/* 내부 업무용 도구라 밝은 화면 한 가지만 사용한다 (어두운 모드로 글자가 안 보이는 일을 막는다) */
+:root {
+  --background: #f4f5f6;
+  --foreground: #1e2124;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", "Noto Sans KR", system-ui,
+    -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+
+/* 보고서 페이지 인쇄(PDF 저장) 설정 */
+@page {
+  size: A4;
+  margin: 14mm;
+}
+@media print {
+  body {
+    background: #fff;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .report-page {
+    box-shadow: none !important;
+  }
+  .report-article {
+    break-before: page;
+  }
+  .report-card,
+  .report-article p {
+    break-inside: avoid;
+  }
+  .report-root * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
