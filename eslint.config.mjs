@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 작업용 폴더
+    "trash-can/**",
+    ".bkit/**",
+    ".claude/**",
   ]),
 ]);
 
