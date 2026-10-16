@@ -517,38 +517,40 @@ export default function ScrapApp() {
 
   return (
     <div className="min-h-screen pb-28">
-      {/* 머리: 이름과 부제목 */}
-      <header className="border-b border-[#cdd1d5] bg-white">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-4">
-          {/* public/logo.png 파일이 있으면 그 이미지를, 없으면 기본 아이콘을 보여 준다 */}
-          {logoFailed ? (
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#083891] text-white">
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path d="M5 4h11a2 2 0 0 1 2 2v13a1 1 0 0 0 1 1H7a2 2 0 0 1-2-2V4z" />
-                <path d="M9 8h6M9 12h6M9 16h4" strokeLinecap="round" />
-              </svg>
-            </span>
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src="/logo.png" alt="" className="h-10 w-auto shrink-0" onError={() => setLogoFailed(true)} />
-          )}
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold leading-tight tracking-tight text-[#1e2124]">오늘의 스크랩</h1>
-            <p className="text-sm text-[#58616a]">경제구조개혁국 관련 기사 스크랩</p>
+      {/* 머리: 이름 */}
+      <header className="bg-white">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-5">
+          <div className="flex items-center gap-2.5">
+            {/* public/logo.png 파일이 있으면 그 이미지를 보여 준다 */}
+            {!logoFailed && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/logo.png" alt="" className="h-8 w-auto shrink-0" onError={() => setLogoFailed(true)} />
+            )}
+            <span className="text-lg font-extrabold tracking-[-0.04em]">오늘의 스크랩</span>
           </div>
+          <span className="rounded-full border border-[#083891] px-3 py-1 text-xs font-medium text-[#083891]">경제구조개혁국</span>
         </div>
       </header>
 
-      {/* 남색 띠 (검색 패널이 살짝 걸친다) */}
-      <div className="h-16 bg-[#094080]" />
+      {/* 큰 제목 */}
+      <div className="bg-gradient-to-b from-[#094080] to-[#052561] px-4 pb-24 pt-10 text-white">
+        <div className="mx-auto max-w-3xl">
+          <h1 className="text-[46px] font-extrabold uppercase leading-[1.02] tracking-[-0.045em] sm:text-[76px]">
+            Today&apos;s
+            <br />
+            Scrap
+          </h1>
+          <p className="mt-4 text-sm text-[#d6e0eb]">경제구조개혁국 관련 기사 스크랩</p>
+        </div>
+      </div>
 
-      <main className="mx-auto -mt-10 w-full max-w-3xl space-y-6 px-4">
+      <main className="mx-auto -mt-14 w-full max-w-3xl space-y-8 px-4">
         {/* ① 검색 조건 */}
-        <section className="rounded-[10px] bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.12)]">
+        <section className="rounded-[24px] border border-[#ebebeb] bg-white p-5 shadow-[0_10px_28px_rgba(5,37,97,0.22)]">
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-base font-bold text-[#1e2124]">검색 기간</h2>
+                <h2 className="text-base font-bold text-[#111111]">검색 기간</h2>
                 <div className="flex flex-wrap gap-1.5">
                   {QUICK_RANGES.map((q) => (
                     <button
@@ -560,7 +562,7 @@ export default function ScrapApp() {
                         handleChange(setStart, r.start);
                         handleChange(setEnd, r.end);
                       }}
-                      className="rounded border border-[#cdd1d5] bg-white px-2.5 py-1 text-xs font-medium text-[#464c53] transition hover:border-[#083891] hover:text-[#083891] disabled:opacity-50"
+                      className="rounded border border-[#ebebeb] bg-white px-2.5 py-1 text-xs font-medium text-[#555555] transition hover:border-[#083891] hover:text-[#083891] disabled:opacity-50"
                     >
                       {q.label}
                     </button>
@@ -576,8 +578,8 @@ export default function ScrapApp() {
                   const box = (
                     <label
                       key={f.key}
-                      className={`block rounded-lg border-2 bg-white p-3 transition focus-within:border-[#256ef4] ${
-                        f.value ? "border-[#cdd1d5]" : "border-dashed border-[#cdd1d5]"
+                      className={`block rounded-2xl border-2 bg-white p-3 transition focus-within:border-[#256ef4] ${
+                        f.value ? "border-[#ebebeb]" : "border-dashed border-[#ebebeb]"
                       }`}
                     >
                       <span className="flex items-center gap-2 text-xs font-bold text-gray-500">
@@ -638,7 +640,7 @@ export default function ScrapApp() {
             </div>
 
             {status === "error" && message && (
-              <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                 {message}
               </p>
             )}
@@ -646,7 +648,7 @@ export default function ScrapApp() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-[#083891] px-6 py-2.5 text-sm font-bold text-white transition hover:bg-[#052561] disabled:opacity-60 sm:w-auto"
+              className="w-full rounded-full bg-[#083891] px-8 py-3 text-sm font-bold text-white transition hover:bg-[#052561] disabled:opacity-60 sm:w-auto"
             >
               {loading ? "기사를 찾는 중입니다…" : "기사 찾기"}
             </button>
@@ -654,7 +656,7 @@ export default function ScrapApp() {
         </section>
 
         {loading && (
-          <div role="status" className="flex items-center gap-3 rounded-[10px] bg-white p-5 text-sm text-gray-600 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+          <div role="status" className="flex items-center gap-3 rounded-[20px] bg-white p-5 text-sm text-gray-600 border border-[#ebebeb]">
             <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-600 border-t-transparent" />
             언론사 RSS에서 기사를 모아 키워드별로 고르고 있습니다. 5~10초 정도 걸립니다.
           </div>
@@ -681,7 +683,7 @@ export default function ScrapApp() {
             </p>
 
             {/* 놓친 이슈 레이더: 키워드 밖에서 여러 보도사가 크게 다룬 이슈 + 보도 흐름 */}
-            <section className="rounded-lg border-l-4 border-l-[#083891] bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+            <section className="rounded-2xl border-l-4 border-l-[#083891] bg-white p-5 border border-[#ebebeb]">
               <h2 className="flex flex-wrap items-center gap-2 text-lg font-bold">
                 <span className="rounded bg-[#083891] px-3 py-0.5 text-sm text-white">📡 놓친 이슈 레이더</span>
                 <span className="text-sm font-normal text-gray-500">{radar.length}건</span>
@@ -713,7 +715,7 @@ export default function ScrapApp() {
                               href={item.link}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="font-semibold leading-snug text-gray-900 hover:text-[#0b50d0] hover:underline"
+                              className="font-semibold leading-snug text-gray-900 hover:text-[#083891] hover:underline"
                             >
                               {item.title}
                             </a>
@@ -744,7 +746,7 @@ export default function ScrapApp() {
               return (
                 <section
                   key={result.keyword}
-                  className={`rounded-[10px] border-l-4 bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.08)] ${style.bar}`}
+                  className={`rounded-[20px] border-l-4 bg-white p-5 border border-[#ebebeb] ${style.bar}`}
                 >
                   <h2 className="flex items-center gap-2 text-lg font-bold">
                     <span className={`rounded px-3 py-0.5 text-sm ${style.chip}`}>{result.keyword}</span>
@@ -755,7 +757,7 @@ export default function ScrapApp() {
                     <p className="mt-3 text-sm text-gray-500">이 시간 범위에는 관련 기사를 찾지 못했습니다.</p>
                   )}
                   {result.short && shown.length > 0 && (
-                    <p className="mt-3 rounded-lg bg-gray-100 px-3 py-1.5 text-sm text-gray-700">
+                    <p className="mt-3 rounded-2xl bg-gray-100 px-3 py-1.5 text-sm text-gray-700">
                       후보가 {MIN_ARTICLES_PER_KEYWORD}건에 못 미쳐 있는 만큼만 보여 드립니다.
                     </p>
                   )}
@@ -778,7 +780,7 @@ export default function ScrapApp() {
                                 href={article.link}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="font-semibold leading-snug text-gray-900 hover:text-[#0b50d0] hover:underline"
+                                className="font-semibold leading-snug text-gray-900 hover:text-[#083891] hover:underline"
                               >
                                 {article.title}
                               </a>
@@ -828,7 +830,7 @@ export default function ScrapApp() {
                               {open[article.id] ? "본문 접기 ▲" : "본문 펼치기 ▼"}
                             </button>
                             {open[article.id] && (
-                              <div className="mt-2 max-h-96 overflow-y-auto rounded-lg bg-gray-50 p-3 text-sm leading-relaxed text-gray-800 ring-1 ring-gray-200">
+                              <div className="mt-2 max-h-96 overflow-y-auto rounded-2xl bg-gray-50 p-3 text-sm leading-relaxed text-gray-800 ring-1 ring-gray-200">
                                 {bodies[article.id]?.state === "loading" && (
                                   <p className="text-gray-500">본문을 가져오는 중입니다…</p>
                                 )}
@@ -846,7 +848,7 @@ export default function ScrapApp() {
                                   return (
                                     <>
                                       {ex && ex.terms.length > 0 && (
-                                        <div className="mb-3 rounded-lg bg-gray-100 p-2.5 text-xs text-gray-800">
+                                        <div className="mb-3 rounded-2xl bg-gray-100 p-2.5 text-xs text-gray-800">
                                           <p className="mb-1 font-semibold">
                                             📖 용어 풀이 <span className="font-normal text-gray-500">(초안, 검수 필요)</span>
                                           </p>
@@ -860,7 +862,7 @@ export default function ScrapApp() {
                                         </div>
                                       )}
                                       {ex && ex.quotes.length > 0 && (
-                                        <div className="mb-3 rounded-lg bg-gray-100 p-2.5 text-xs text-gray-800">
+                                        <div className="mb-3 rounded-2xl bg-gray-100 p-2.5 text-xs text-gray-800">
                                           <p className="mb-1 font-semibold">
                                             💬 발언 <span className="font-normal text-gray-500">(참고용 추출)</span>
                                           </p>
@@ -889,7 +891,7 @@ export default function ScrapApp() {
             })}
 
             {/* ③ 선택한 기사 */}
-            <section id="selected" className="scroll-mt-20 rounded-[10px] bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+            <section id="selected" className="scroll-mt-20 rounded-[20px] border border-[#ebebeb] bg-white p-5">
               <h2 className="text-lg font-bold">
                 선택한 기사 <span className="text-sm font-normal text-gray-500">{selected.length}건</span>
               </h2>
@@ -902,7 +904,7 @@ export default function ScrapApp() {
                     const article = articleById.get(id);
                     if (!article) return null;
                     return (
-                      <li key={id} className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm">
+                      <li key={id} className="flex items-center gap-2 rounded-2xl bg-gray-50 px-3 py-2 text-sm">
                         <span className="w-6 shrink-0 font-semibold text-[#083891]">{index + 1}</span>
                         <span className="min-w-0 flex-1 truncate">
                           <span className={`mr-1.5 rounded px-2 py-0.5 text-xs ${
@@ -945,7 +947,7 @@ export default function ScrapApp() {
               )}
 
               {exportError && (
-                <p role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <p role="alert" className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                   {exportError}
                 </p>
               )}
@@ -954,16 +956,16 @@ export default function ScrapApp() {
         )}
       </main>
 
-      <footer className="mt-10 border-t border-[#cdd1d5] bg-[#f4f5f6] px-4 py-6 text-xs text-[#6d7882]">
+      <footer className="mt-10 border-t border-[#ebebeb] bg-[#f4f5f6] px-4 py-6 text-xs text-[#6d7882]">
         <div className="mx-auto max-w-3xl space-y-1">
-          <p className="text-sm font-bold text-[#464c53]">오늘의 스크랩</p>
+          <p className="text-sm font-bold text-[#555555]">오늘의 스크랩</p>
           <p>내부 업무용 도구입니다. 기사 선별 결과·요약·점수는 참고용이므로 원문을 확인해 주세요. 기사의 저작권은 각 언론사에 있습니다.</p>
         </div>
       </footer>
 
       {/* 화면 아래에 항상 떠 있는 파일 받기 줄 */}
       {status === "done" && data && (
-        <div className="fixed inset-x-0 bottom-0 border-t border-[#cdd1d5] bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 border-t border-[#ebebeb] bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
             <p className="text-sm text-gray-700">
               선택한 기사 <strong className="text-[#083891]">{selected.length}건</strong>
@@ -973,7 +975,7 @@ export default function ScrapApp() {
                 type="button"
                 onClick={handleCards}
                 disabled={selected.length === 0 || cardBusy}
-                className="rounded-lg border border-[#083891] bg-white px-4 py-2 text-sm font-semibold text-[#083891] shadow-sm transition hover:bg-gray-100 disabled:opacity-40"
+                className="rounded-2xl border border-[#083891] bg-white px-4 py-2 text-sm font-semibold text-[#083891] shadow-sm transition hover:bg-gray-100 disabled:opacity-40"
               >
                 {cardBusy ? "이미지를 만드는 중…" : "한눈에 보기 이미지 만들기"}
               </button>
@@ -981,7 +983,7 @@ export default function ScrapApp() {
                 type="button"
                 onClick={handleReport}
                 disabled={selected.length === 0 || reportBusy}
-                className="rounded-lg border border-[#083891] bg-white px-4 py-2 text-sm font-semibold text-[#083891] transition hover:bg-[#ecf2fe] disabled:opacity-40"
+                className="rounded-2xl border border-[#083891] bg-white px-4 py-2 text-sm font-semibold text-[#083891] transition hover:bg-[#ecf2fe] disabled:opacity-40"
               >
                 {reportBusy ? "보고서를 만드는 중…" : "보고서 보기 (PDF 저장)"}
               </button>
@@ -989,7 +991,7 @@ export default function ScrapApp() {
                 type="button"
                 onClick={handleExport}
                 disabled={selected.length === 0 || exporting}
-                className="rounded-lg bg-[#083891] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#052561] disabled:opacity-40"
+                className="rounded-2xl bg-[#083891] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#052561] disabled:opacity-40"
               >
                 {exporting ? "파일을 만드는 중입니다…" : "텍스트 파일로 받기 (.txt)"}
               </button>
@@ -1006,7 +1008,7 @@ export default function ScrapApp() {
           aria-label="카드뉴스 이미지 미리보기"
           className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4"
         >
-          <div className="my-4 w-full max-w-xl rounded-lg bg-white p-4 shadow-xl">
+          <div className="my-4 w-full max-w-xl rounded-2xl bg-white p-4 shadow-xl">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-bold">
                 한눈에 보기 이미지 <span className="text-sm font-normal text-gray-500">A4 {cardPages.length}장</span>
@@ -1015,14 +1017,14 @@ export default function ScrapApp() {
                 <button
                   type="button"
                   onClick={downloadAllCards}
-                  className="rounded-lg bg-[#083891] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#052561]"
+                  className="rounded-2xl bg-[#083891] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#052561]"
                 >
                   모두 받기 (.png)
                 </button>
                 <button
                   type="button"
                   onClick={() => setCardPages(null)}
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50"
+                  className="rounded-2xl border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50"
                 >
                   닫기
                 </button>
@@ -1037,7 +1039,7 @@ export default function ScrapApp() {
               {cardPages.map((url, i) => (
                 <div key={i}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt={`카드뉴스 ${i + 1}쪽`} className="w-full rounded-lg ring-1 ring-gray-200" />
+                  <img src={url} alt={`카드뉴스 ${i + 1}쪽`} className="w-full rounded-2xl ring-1 ring-gray-200" />
                   <a
                     href={url}
                     download={`스크랩카드_${kstDateStamp()}_${i + 1}.png`}

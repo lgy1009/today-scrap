@@ -2,8 +2,8 @@
 
 /* 내부 업무용 도구라 밝은 화면 한 가지만 사용한다 (어두운 모드로 글자가 안 보이는 일을 막는다) */
 :root {
-  --background: #f4f5f6;
-  --foreground: #1e2124;
+  --background: #ffffff;
+  --foreground: #111111;
   color-scheme: light;
 }
 
