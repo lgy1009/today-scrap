@@ -3,9 +3,10 @@
 // 보고서 페이지: 선택한 기사를 "한눈에 보기 + 기사 전문"으로 한 문서에 담아 보여 준다.
 // 브라우저의 인쇄 기능으로 "PDF로 저장"하는 용도다. (서버로 보내거나 저장하지 않는다)
 
+import { useState } from "react";
 import { KEYWORD_COLOR } from "@/lib/cardnews";
 import { kstDateStamp } from "@/lib/textfile";
-import { buildWordHtml } from "@/lib/worddoc";
+import { buildWordHtml, COVER_EDITORS, COVER_FONT, COVER_TITLE, coverDate } from "@/lib/worddoc";
 
 export type ReportItem = {
   number: number; // 스크랩 파일의 기사 번호와 같다
@@ -39,6 +40,102 @@ function isSafeLink(link: string): boolean {
   return link.startsWith("https://") || link.startsWith("http://");
 }
 
+// 표지: 가운데 제목과 작성일, 오른쪽 위 편집자. 글꼴은 함초롬바탕(이 글꼴이 설치된 컴퓨터에서 그대로 보인다), 글자는 검정.
+function ReportCover({ dateLabel }: { dateLabel: string }) {
+  return (
+    <section
+      style={{ fontFamily: COVER_FONT, color: "#000" }}
+      className="report-page report-cover relative flex min-h-[265mm] flex-col items-center justify-center bg-white px-12 py-16 text-center shadow-[0_1px_4px_rgba(0,0,0,0.08)] print:shadow-none"
+    >
+      {/* 편집자 이름은 "편집 :" 뒤에 세로로 나란히 */}
+      <div className="absolute right-12 top-12 flex gap-1.5 border-[1.5px] border-black px-3 py-1.5 text-left text-base font-bold">
+        <span>편집 :</span>
+        <span>
+          {COVER_EDITORS.map((name) => (
+            <span key={name} className="block">
+              {name}
+            </span>
+          ))}
+        </span>
+      </div>
+      <h1
+        className="whitespace-nowrap border-[1.5px] border-black px-12 py-8 text-[40px] font-bold leading-tight"
+        style={{ boxShadow: "6px 6px 0 #888" }}
+      >
+        {COVER_TITLE}
+      </h1>
+      <p className="mt-32 text-[28px] font-bold">{coverDate(dateLabel)}</p>
+    </section>
+  );
+}
+
+// 목차 한 줄. 기사가 많을수록 요약을 줄여 A4 한 쪽에 들어가게 한다.
+//   8건 이하: 요약 3줄 카드 2칸 / 14건 이하: 한 줄 요약이 있는 목록 / 그 이상: 제목만 한 줄씩 (약 30건까지 한 쪽)
+function TocList({ items }: { items: ReportItem[] }) {
+  if (items.length <= 8) {
+    return (
+      <ol className="grid grid-cols-2 gap-3 px-8 py-5">
+        {items.map((it) => {
+          const color = KEYWORD_COLOR[it.keyword] ?? "#475569";
+          return (
+            <li
+              key={it.number}
+              className="report-card break-inside-avoid rounded-lg border border-[#dfe3e8] bg-white"
+              style={{ borderTop: `4px solid ${color}` }}
+            >
+              <div className="p-3">
+                <p className="flex items-center gap-2">
+                  <span className="text-lg font-bold text-[#083891]">{String(it.number).padStart(2, "0")}</span>
+                  <span className="rounded-full border px-2 py-0 text-[11px] font-bold" style={{ borderColor: color, color }}>
+                    {it.keyword}
+                  </span>
+                </p>
+                <p className="mt-1 text-[13px] font-bold leading-snug text-[#1e2124]">{it.title}</p>
+                {it.summary && <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-[#58616a]">{it.summary}</p>}
+                <p className="mt-2 flex justify-between border-t border-[#dfe3e8] pt-1.5 text-[10.5px] text-[#6d7882]">
+                  <span>
+                    <strong className="text-[#58616a]">{it.source}</strong> · {kst(it.publishedAt).slice(6)}
+                  </span>
+                  {it.mentionCount > 1 && <strong className="text-[#083891]">{it.mentionCount}곳 보도</strong>}
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    );
+  }
+
+  const compact = items.length > 14;
+  return (
+    <ol className="px-8 py-3">
+      {items.map((it) => {
+        const color = KEYWORD_COLOR[it.keyword] ?? "#475569";
+        return (
+          <li
+            key={it.number}
+            className={`report-card flex items-baseline gap-2 border-b border-[#dfe3e8] last:border-b-0 ${compact ? "py-1" : "py-2"}`}
+          >
+            <span className="w-6 shrink-0 text-sm font-bold text-[#083891]">{String(it.number).padStart(2, "0")}</span>
+            <span className="w-11 shrink-0 text-[11px] font-bold" style={{ color }}>
+              {it.keyword}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className={`text-[13px] font-bold leading-snug text-[#1e2124] ${compact ? "line-clamp-1" : "line-clamp-2"}`}>
+                {it.title}
+              </span>
+              {!compact && it.summary && (
+                <span className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-[#58616a]">{it.summary}</span>
+              )}
+            </span>
+            <span className="shrink-0 text-right text-[10.5px] text-[#6d7882]">{it.source}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export default function ReportView({
   items,
   dateLabel,
@@ -48,6 +145,7 @@ export default function ReportView({
   dateLabel: string;
   onClose: () => void;
 }) {
+  const [withCover, setWithCover] = useState(true);
   const counts = new Map<string, number>();
   for (const it of items) counts.set(it.keyword, (counts.get(it.keyword) ?? 0) + 1);
   const keys = KEYWORD_ORDER.filter((k) => counts.has(k));
@@ -55,7 +153,7 @@ export default function ReportView({
   // 워드 파일(.doc)로 받는다: 워드에서 사진을 붙이거나 원문을 고친 뒤 PDF로 변환할 수 있다
   function downloadWord() {
     // 맨 앞의 BOM은 워드가 한글을 올바르게 읽도록 돕는다
-    const html = "﻿" + buildWordHtml(items, dateLabel);
+    const html = "﻿" + buildWordHtml(items, dateLabel, withCover);
     const blob = new Blob([html], { type: "application/msword;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -76,7 +174,11 @@ export default function ReportView({
             기사 {items.length}건 · 아래 <strong>&quot;PDF로 저장&quot;</strong>을 누르고, 인쇄 창의 대상(프린터)을{" "}
             <strong>&quot;PDF로 저장&quot;</strong>으로 선택해 주세요.
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 text-sm text-[#464c53]">
+              <input type="checkbox" checked={withCover} onChange={(e) => setWithCover(e.target.checked)} />
+              표지 넣기
+            </label>
             <button
               type="button"
               onClick={downloadWord}
@@ -103,20 +205,21 @@ export default function ReportView({
       </div>
 
       <div className="mx-auto max-w-[210mm] space-y-6 px-4 py-6 print:space-y-0 print:p-0">
-        {/* 1쪽: 표지와 한눈에 보기 */}
-        <section className="report-page bg-white shadow-[0_1px_4px_rgba(0,0,0,0.08)] print:shadow-none">
-          <div className="report-navy flex flex-wrap items-end justify-between gap-2 border-b-[6px] border-[#083891] px-8 pb-5 pt-8">
-            <div className="border-l-8 border-[#083891] pl-4">
-              <h1 className="text-3xl font-bold tracking-tight text-[#052561]">오늘의 스크랩</h1>
-              <p className="mt-1 text-sm text-[#58616a]">경제구조개혁국 관련 기사 스크랩</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xl font-bold text-[#1e2124]">{dateLabel}</p>
-              <p className="text-sm text-[#58616a]">기사 {items.length}건</p>
-            </div>
+        {withCover && <ReportCover dateLabel={dateLabel} />}
+
+        {/* 목차: 기사 수에 맞춰 촘촘하게 바꿔 한 쪽 안에 담는다 */}
+        <section
+          style={withCover ? { breakBefore: "page", pageBreakBefore: "always" } : undefined}
+          className="report-page bg-white shadow-[0_1px_4px_rgba(0,0,0,0.08)] print:shadow-none"
+        >
+          <div className="report-navy flex items-end justify-between gap-2 border-b-[4px] border-[#083891] px-8 pb-3 pt-6">
+            <h2 className="text-2xl font-bold tracking-tight text-[#052561]">{withCover ? "목차" : "오늘의 스크랩"}</h2>
+            <p className="text-sm text-[#58616a]">
+              <strong className="text-[#1e2124]">{dateLabel}</strong> · 기사 {items.length}건
+            </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-[#dfe3e8] px-8 py-3 text-sm">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-[#dfe3e8] px-8 py-2 text-sm">
             {keys.map((k) => (
               <span key={k} className="inline-flex items-center gap-1.5">
                 <span
@@ -129,42 +232,7 @@ export default function ReportView({
             ))}
           </div>
 
-          <ol className="grid grid-cols-2 gap-3 px-8 py-6">
-            {items.map((it) => {
-              const color = KEYWORD_COLOR[it.keyword] ?? "#475569";
-              return (
-                <li
-                  key={it.number}
-                  className="report-card break-inside-avoid rounded-lg border border-[#dfe3e8] bg-white"
-                  style={{ borderTop: `4px solid ${color}` }}
-                >
-                  <div className="p-3">
-                    <p className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-[#083891]">{String(it.number).padStart(2, "0")}</span>
-                      <span
-                        className="rounded-full border px-2 py-0 text-[11px] font-bold"
-                        style={{ borderColor: color, color }}
-                      >
-                        {it.keyword}
-                      </span>
-                    </p>
-                    <p className="mt-1 text-[13px] font-bold leading-snug text-[#1e2124]">{it.title}</p>
-                    {it.summary && (
-                      <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-[#58616a]">{it.summary}</p>
-                    )}
-                    <p className="mt-2 flex justify-between border-t border-[#dfe3e8] pt-1.5 text-[10.5px] text-[#6d7882]">
-                      <span>
-                        <strong className="text-[#58616a]">{it.source}</strong> · {kst(it.publishedAt).slice(6)}
-                      </span>
-                      {it.mentionCount > 1 && (
-                        <strong className="text-[#083891]">{it.mentionCount}곳 보도</strong>
-                      )}
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
+          <TocList items={items} />
         </section>
 
         {/* 기사별 전문: 기사마다 새 쪽에서 시작 */}

@@ -16,19 +16,23 @@ function error(status: number, code: string, message: string) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 
+const MAX_MANUAL_BODY = 50000; // 직접 입력한 본문의 최대 글자 수
+
 type Requested = {
   keyword: string;
   title: string;
   source: string;
   publishedAt: string;
   link: string;
+  manualBody?: string; // 사용자가 직접 입력한 기사의 본문 (있으면 서버가 기사 주소를 읽지 않는다)
 };
 
 // 요청에 들어온 기사 한 건이 형식에 맞는지 확인한다
 function parseRequested(value: unknown): Requested | null {
   if (typeof value !== "object" || value === null) return null;
   const r = value as Record<string, unknown>;
-  const { keyword, title, source, publishedAt, link } = r;
+  const { keyword, title, source, publishedAt, link, manual, body } = r;
+  const isManual = manual === true;
   if (
     typeof keyword !== "string" ||
     typeof title !== "string" ||
@@ -41,6 +45,12 @@ function parseRequested(value: unknown): Requested | null {
   if (!(KEYWORDS as readonly string[]).includes(keyword) && keyword !== OTHER_KEYWORD) return null;
   if (!title || title.length > 300 || !source || source.length > 50 || link.length > 2000) return null;
   if (Number.isNaN(Date.parse(publishedAt))) return null;
+  if (isManual) {
+    // 직접 입력한 기사: 본문은 사용자가 보낸 글 그대로 쓴다 (원문 주소는 비어 있거나 http(s)만 허용)
+    if (typeof body !== "string" || !body.trim() || body.length > MAX_MANUAL_BODY) return null;
+    if (link && !/^https?:\/\//.test(link)) return null;
+    return { keyword, title, source, publishedAt, link, manualBody: body };
+  }
   return { keyword, title, source, publishedAt, link };
 }
 
@@ -89,8 +99,13 @@ export async function POST(request: Request) {
     while (next < requested.length) {
       const index = next++;
       const article = requested[index];
-      const result = await extractBody(article.link, article.title);
-      const body = result.ok ? result.body : null;
+      let body: string | null;
+      if (article.manualBody !== undefined) {
+        body = article.manualBody; // 직접 입력한 기사는 주소를 읽지 않고 입력한 본문을 쓴다
+      } else {
+        const result = await extractBody(article.link, article.title);
+        body = result.ok ? result.body : null;
+      }
       entries[index] = { ...article, body, summary: summarize(body, undefined, article.title) };
     }
   }

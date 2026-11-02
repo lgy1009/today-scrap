@@ -58,7 +58,7 @@ export function buildScrapText(entries: readonly ScrapEntry[], now: Date = new D
       `${index + 1}. [${e.keyword}] ${e.title}`,
       `보도사: ${e.source}`,
       `입력시간: ${formatKst(e.publishedAt)}`,
-      `원문: ${e.link}`,
+      ...(e.link ? [`원문: ${e.link}`] : []), // 직접 입력한 기사는 원문 주소가 없을 수 있다
       "",
       e.body && e.body.trim() ? e.body.trim() : BODY_MISSING,
       "",

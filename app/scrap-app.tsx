@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  KEYWORDS,
+  OTHER_KEYWORD,
   MIN_ARTICLES_PER_KEYWORD,
   RADAR_BIG_ISSUE_SOURCES,
   RADAR_MIN_SOURCES,
@@ -33,7 +35,12 @@ type Saved = {
   selected: string[];
   bodies: Record<string, BodyState>;
   open: Record<string, boolean>;
+  manual?: Article[]; // 직접 입력한 기사 (예전에 보관된 화면에는 없을 수 있다)
 };
+
+// 직접 입력한 기사의 id는 항상 "manual-"로 시작한다 (검색으로 찾은 기사와 구분하는 표시)
+const isManualId = (id: string) => id.startsWith("manual-");
+const MAX_MANUAL_BODY = 50000; // 서버(/api/export)와 같은 글자 수 제한
 const STORAGE_KEY = "today-scrap-v1";
 const SCROLL_KEY = "today-scrap-scroll-v1"; // 스크롤 위치(숫자)는 따로 보관한다
 
@@ -164,6 +171,14 @@ export default function ScrapApp() {
   const [reportItems, setReportItems] = useState<ReportItem[] | null>(null); // 보고서 페이지 내용
   const [reportBusy, setReportBusy] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false); // 로고 파일이 없으면 true
+  const [manual, setManual] = useState<Article[]>(saved?.manual ?? []); // 직접 입력한 기사
+  const [mTitle, setMTitle] = useState("");
+  const [mSource, setMSource] = useState("");
+  const [mTime, setMTime] = useState("");
+  const [mKeyword, setMKeyword] = useState<string>(OTHER_KEYWORD);
+  const [mLink, setMLink] = useState("");
+  const [mBody, setMBody] = useState("");
+  const [mError, setMError] = useState<string | null>(null);
 
   // 보관된 스크롤 위치로 돌아간다 (화면이 다 그려진 뒤에도 한 번 더 맞춘다)
   useEffect(() => {
@@ -185,12 +200,12 @@ export default function ScrapApp() {
   // 바뀔 때마다 화면 상태를 보관한다
   useEffect(() => {
     try {
-      const saved: Saved = { start, end, data, selected, bodies, open };
+      const saved: Saved = { start, end, data, selected, bodies, open, manual };
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
     } catch {
       // 보관 공간이 막혀 있어도 사용에는 지장이 없다
     }
-  }, [start, end, data, selected, bodies, open]);
+  }, [start, end, data, selected, bodies, open, manual]);
 
   // 스크롤 위치를 보관한다
   useEffect(() => {
@@ -222,8 +237,9 @@ export default function ScrapApp() {
       for (const article of result.articles) map.set(article.id, article);
     }
     for (const article of radar) map.set(article.id, article);
+    for (const article of manual) map.set(article.id, article);
     return map;
-  }, [data, radar]);
+  }, [data, radar, manual]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -233,17 +249,21 @@ export default function ScrapApp() {
       setMessage(problem);
       return;
     }
-    // 이미 고른 기사가 있으면 다시 검색할 때 사라진다는 것을 확인받는다
-    if (selected.length > 0 && !window.confirm("다시 검색하면 지금 선택한 기사가 모두 사라집니다. 계속할까요?")) {
+    // 검색으로 고른 기사가 있으면 다시 검색할 때 사라진다는 것을 확인받는다 (직접 입력한 기사는 남는다)
+    if (
+      selected.some((id) => !isManualId(id)) &&
+      !window.confirm("다시 검색하면 검색으로 고른 기사가 모두 사라집니다. (직접 입력한 기사는 남습니다.) 계속할까요?")
+    ) {
       return;
     }
 
     setStatus("loading");
     setMessage(null);
     setData(null);
-    setBodies({});
+    // 직접 입력한 기사의 본문과 선택은 그대로 둔다
+    setBodies((prev) => Object.fromEntries(Object.entries(prev).filter(([id]) => isManualId(id))));
     setOpen({});
-    setSelected([]);
+    setSelected((prev) => prev.filter(isManualId));
     setExportError(null);
     try {
       const res = await fetch("/api/search", {
@@ -328,6 +348,58 @@ export default function ScrapApp() {
   function toggleSelect(id: string) {
     setExportError(null);
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  // 선택 목록에서 기사를 뺀다. 직접 입력한 기사는 다른 곳에서 다시 고를 수 없으므로 아예 지운다.
+  function removeFromSelected(id: string) {
+    toggleSelect(id);
+    if (isManualId(id)) {
+      setManual((prev) => prev.filter((a) => a.id !== id));
+      setBodies((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
+  }
+
+  // 직접 찾은 기사를 입력받아 선택 목록 맨 뒤에 넣는다 (제목·보도사·시간·본문은 꼭 필요하고, 원문 주소는 선택)
+  function addManualArticle(event: React.FormEvent) {
+    event.preventDefault();
+    const title = mTitle.trim();
+    const source = mSource.trim();
+    const link = mLink.trim();
+    const body = mBody.trim();
+    const ms = parseKst(mTime);
+    if (!title) return setMError("제목을 입력해 주세요.");
+    if (title.length > 300) return setMError("제목은 300자 이내로 입력해 주세요.");
+    if (!source) return setMError("보도사를 입력해 주세요.");
+    if (source.length > 50) return setMError("보도사는 50자 이내로 입력해 주세요.");
+    if (ms === null) return setMError("입력시간을 선택해 주세요.");
+    if (!body) return setMError("본문을 붙여 넣어 주세요.");
+    if (body.length > MAX_MANUAL_BODY) return setMError(`본문은 ${MAX_MANUAL_BODY.toLocaleString("ko-KR")}자 이내로 입력해 주세요.`);
+    if (link && !isSafeLink(link)) return setMError("원문 주소는 http:// 또는 https://로 시작해야 합니다.");
+
+    const id = `manual-${Date.now()}`;
+    const article: Article = {
+      id,
+      keyword: mKeyword as Article["keyword"],
+      mentionCount: 1,
+      title,
+      link,
+      source,
+      publishedAt: new Date(ms).toISOString(),
+    };
+    setManual((prev) => [...prev, article]);
+    setBodies((prev) => ({ ...prev, [id]: { state: "ok", body } }));
+    setSelected((prev) => [...prev, id]);
+    setExportError(null);
+    setMError(null);
+    setMTitle("");
+    setMSource("");
+    setMTime("");
+    setMLink("");
+    setMBody("");
   }
 
   // 선택한 기사의 순서를 한 칸씩 바꾼다 (-1: 위로, +1: 아래로)
@@ -454,13 +526,18 @@ export default function ScrapApp() {
     const articles = selected
       .map((id) => articleById.get(id))
       .filter((a): a is Article => a !== undefined)
-      .map((a) => ({
-        keyword: a.keyword,
-        title: a.title,
-        source: a.source,
-        publishedAt: a.publishedAt,
-        link: a.link,
-      }));
+      .map((a) => {
+        const known = bodies[a.id];
+        return {
+          keyword: a.keyword,
+          title: a.title,
+          source: a.source,
+          publishedAt: a.publishedAt,
+          link: a.link,
+          // 직접 입력한 기사는 입력한 본문을 함께 보낸다 (서버가 주소를 읽지 않는다)
+          ...(isManualId(a.id) ? { manual: true, body: known?.state === "ok" ? known.body : "" } : {}),
+        };
+      });
     if (articles.length === 0) return;
 
     setExporting(true);
@@ -502,6 +579,8 @@ export default function ScrapApp() {
   }
 
   const loading = status === "loading";
+  // 검색 결과가 있거나, 직접 입력한 기사가 있으면 "선택한 기사"와 파일 받기 줄을 보여 준다
+  const showSelected = (status === "done" && data !== null) || manual.length > 0;
 
   // 본문을 가져오지 못해 목록에서 뺀 기사 수 (이번 검색 결과에 속한 것만 센다)
   const failedCount = data
@@ -654,6 +733,93 @@ export default function ScrapApp() {
             </button>
           </form>
         </section>
+
+        {/* ①-2 직접 찾은 기사 추가: 추천 후보 말고 내가 찾은 기사를 같은 양식으로 스크랩에 넣는다 */}
+        <details className="rounded-[20px] border border-[#ebebeb] bg-white p-5" open={manual.length > 0 || undefined}>
+          <summary className="cursor-pointer text-base font-bold text-[#111111]">
+            내가 찾은 기사 직접 추가
+            {manual.length > 0 && <span className="ml-2 text-sm font-normal text-gray-500">{manual.length}건 추가됨</span>}
+          </summary>
+          <p className="mt-2 text-xs text-gray-500">
+            제목·보도사·입력시간·본문을 넣으면 추천 기사와 같은 양식으로 스크랩 파일에 담깁니다. 입력한 내용은
+            이 브라우저 안에서만 쓰이고 서버에 저장되지 않습니다.
+          </p>
+          <form onSubmit={addManualArticle} className="mt-3 space-y-3" noValidate>
+            <label className="block text-sm font-semibold text-gray-800">
+              제목
+              <input
+                value={mTitle}
+                onChange={(e) => setMTitle(e.target.value)}
+                maxLength={300}
+                className="mt-1 block w-full rounded-xl border border-[#ebebeb] px-3 py-2 text-sm font-normal focus:border-[#256ef4] focus:outline-none"
+              />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className="block text-sm font-semibold text-gray-800">
+                보도사
+                <input
+                  value={mSource}
+                  onChange={(e) => setMSource(e.target.value)}
+                  maxLength={50}
+                  placeholder="예: 연합뉴스"
+                  className="mt-1 block w-full rounded-xl border border-[#ebebeb] px-3 py-2 text-sm font-normal focus:border-[#256ef4] focus:outline-none"
+                />
+              </label>
+              <label className="block text-sm font-semibold text-gray-800">
+                입력시간 (한국시간)
+                <input
+                  type="datetime-local"
+                  value={mTime}
+                  onChange={(e) => setMTime(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-[#ebebeb] px-3 py-2 text-sm font-normal focus:border-[#256ef4] focus:outline-none"
+                />
+              </label>
+              <label className="block text-sm font-semibold text-gray-800">
+                키워드
+                <select
+                  value={mKeyword}
+                  onChange={(e) => setMKeyword(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-[#ebebeb] bg-white px-3 py-2 text-sm font-normal focus:border-[#256ef4] focus:outline-none"
+                >
+                  {[...KEYWORDS, OTHER_KEYWORD].map((k) => (
+                    <option key={k} value={k}>
+                      {k}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label className="block text-sm font-semibold text-gray-800">
+              원문 주소 <span className="font-normal text-gray-500">(선택)</span>
+              <input
+                value={mLink}
+                onChange={(e) => setMLink(e.target.value)}
+                placeholder="https://"
+                className="mt-1 block w-full rounded-xl border border-[#ebebeb] px-3 py-2 text-sm font-normal focus:border-[#256ef4] focus:outline-none"
+              />
+            </label>
+            <label className="block text-sm font-semibold text-gray-800">
+              본문
+              <textarea
+                value={mBody}
+                onChange={(e) => setMBody(e.target.value)}
+                rows={8}
+                className="mt-1 block w-full rounded-xl border border-[#ebebeb] px-3 py-2 text-sm font-normal leading-relaxed focus:border-[#256ef4] focus:outline-none"
+              />
+            </label>
+            {mError && (
+              <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {mError}
+              </p>
+            )}
+            <button
+              type="submit"
+              className="rounded-full bg-[#083891] px-6 py-2.5 text-sm font-bold text-white transition hover:bg-[#052561]"
+            >
+              선택한 기사에 추가
+            </button>
+          </form>
+        </details>
 
         {loading && (
           <div role="status" className="flex items-center gap-3 rounded-[20px] bg-white p-5 text-sm text-gray-600 border border-[#ebebeb]">
@@ -890,7 +1056,12 @@ export default function ScrapApp() {
               );
             })}
 
-            {/* ③ 선택한 기사 */}
+          </>
+        )}
+
+        {/* ③ 선택한 기사 (검색 결과가 없어도 직접 입력한 기사가 있으면 보여 준다) */}
+        {showSelected && (
+          <>
             <section id="selected" className="scroll-mt-20 rounded-[20px] border border-[#ebebeb] bg-white p-5">
               <h2 className="text-lg font-bold">
                 선택한 기사 <span className="text-sm font-normal text-gray-500">{selected.length}건</span>
@@ -912,6 +1083,9 @@ export default function ScrapApp() {
                           }`}>
                             {article.keyword}
                           </span>
+                          {isManualId(id) && (
+                            <span className="mr-1.5 rounded bg-[#ecf2fe] px-2 py-0.5 text-xs text-[#083891]">직접 추가</span>
+                          )}
                           {article.title}
                           <span className="text-gray-500"> · {article.source}</span>
                         </span>
@@ -935,7 +1109,7 @@ export default function ScrapApp() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => toggleSelect(id)}
+                          onClick={() => removeFromSelected(id)}
                           className="rounded border border-gray-300 bg-white px-2 py-0.5 text-red-700"
                         >
                           제거
@@ -964,7 +1138,7 @@ export default function ScrapApp() {
       </footer>
 
       {/* 화면 아래에 항상 떠 있는 파일 받기 줄 */}
-      {status === "done" && data && (
+      {showSelected && (
         <div className="fixed inset-x-0 bottom-0 border-t border-[#ebebeb] bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
             <p className="text-sm text-gray-700">
